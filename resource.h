@@ -35,6 +35,7 @@
 #define MREQ_DIALOG                     107
 #define FREQ_DIALOG                     108
 #define MBCHECK_DIALOG                  109
+#define ABOUT_DIALOG                    112
 #define IDC_BUTTON2                     1008
 #define MAKE_CHECKSUM                   1008
 #define CCHECK_INPUT_BUTTON             1008
@@ -51,7 +52,10 @@
 #define MPATCH_OUTPUT_BUTTON            1011
 #define IDC_BUTTON6                     1012
 #define APPLY_PATCH                     1012
+#define ABOUT                           1013
+#define ABOUTSTR                        1013
 #define MAKE_BATCHCHECKSUM              1014
+#define HELP                            1015
 #define CCHECK_OUTPUT_FILE              1017
 #define MCHECK_OUTPUT_FIELD             1017
 #define MPATCH_OUTPUT_FIELD             1018
@@ -114,9 +118,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        111
+#define _APS_NEXT_RESOURCE_VALUE        113
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1069
+#define _APS_NEXT_CONTROL_VALUE         1072
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -1,4 +1,21 @@
+/*
+ZIDRAV, file corruption repairer
+Copyright (C) 1999  Ben Wilhelm
 
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+*/
 #include <afxwin.h>
 #include <windows.h>
 #include <commdlg.h>
@@ -9,7 +26,8 @@
 #include "resource.h"
 #include "flayer.h"
 #include "iface.h"
-
+#include "utils.h"
+// winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib
 DWORD WINAPI MakeBatchChecksumGO( LPVOID lpParameter ) {
 
 	HWND hwnd = (HWND)lpParameter;
@@ -17,9 +35,6 @@ DWORD WINAPI MakeBatchChecksumGO( LPVOID lpParameter ) {
 	char	startdir[MAX_PATH];
 	char	destdir[MAX_PATH];
 	char	mask[MAX_PATH];
-
-	char	temppath[MAX_PATH];
-	char	*floater;
 
 	int		flatten;
 	int		count;
@@ -63,15 +78,8 @@ DWORD WINAPI MakeBatchChecksumGO( LPVOID lpParameter ) {
 				astr.varalpha = filedat.source;
 				MakeBatchChecksumMainIface( UPD_LOWERSTAT, NULL, &astr, hwnd );
 				MakeBatchChecksumMainIface( UPD_PBSET, currentsize, NULL, hwnd );
-				if( filedat.newdir ) {
-					floater = strchr( filedat.name, '\\' );
-					while( floater = strchr( floater + 1, '\\' ) ) {
-						strncpy( temppath, filedat.name, floater - filedat.name );
-						temppath[ floater - filedat.name ] = '\0';
-						if( access( temppath, 0 ) )
-							CreateDirectory( temppath, NULL );
-					}
-				}
+				if( filedat.newdir )
+					MakeNeededTree( filedat.name );
 				MakeChecksumFLayer( filedat.source, filedat.name, blocksize, KStatIface( MakeBatchChecksumMakerIface, hwnd ) );
 				currentsize += filedat.fsize;
 			}

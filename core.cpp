@@ -1,4 +1,21 @@
+/*
+ZIDRAV, file corruption repairer
+Copyright (C) 1999  Ben Wilhelm
 
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+*/
 #include <fstream.h>
 
 #include "core.h"
@@ -103,7 +120,7 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 	iface( UPD_PBRANGE, vstrlen, NULL );
 	iface( UPD_PBSET, 0, NULL );
 	iface( UPD_PBSHOW, NULL, NULL );
-	
+
 	for( vstrlen % blocksize ? i = -1 : i = 0; i < vstrlen / blocksize; i++ ) {
 
 		if( i >= 0 && !( i % 32 ) )
@@ -137,10 +154,10 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 
 			curolen += 8 + curbs;
 
-			*efound = 1;
+			*efound = 1; 
 		
 		}
-		
+
 	}
 
 	delete [] buffer;
@@ -521,3 +538,50 @@ void CreateChecksum( char *buffer, long size, long *crc ) {
 
     *crc ^= 0xffffffffL;
 }
+
+/*#define DO1( buffer ) tempcrc = (tempcrc >> 8) ^ crc_table[(tempcrc ^ *buffer) & 0xff]; \
+					  *crc = (tempcrc >> 8) ^ crc_table[(*crc ^ *(buffer++)) & 0xff];
+
+#define DO2( buffer )  DO1( buffer ); DO1( buffer );
+#define DO4( buffer )  DO2( buffer ); DO2( buffer );
+#define DO8( buffer )  DO4( buffer ); DO4( buffer );
+#define DO16( buffer )  DO8( buffer ); DO8( buffer );
+
+void CreateChecksum( char *buffer, long size, unsigned long *crc ) {
+
+	*crc = 0;
+
+    *crc ^= ~0;
+
+	unsigned long tempcrc = ~0;
+
+    while ( size >= 16 )
+    {
+      DO16( buffer );
+      size -= 16;
+    }
+
+    while ( size ) {
+      DO1( buffer );
+	  size--;
+    } 
+
+    *crc ^= ~0;
+}
+      
+*//*void CreateChecksum( char *buffer, long size, signed long *crc ) {
+	CreateChecksum( buffer, size, (unsigned long *)crc ); }
+
+void CreateChecksum( char *buffer, long size, unsigned long *main_val )
+{
+
+	unsigned long         crc = ~0, crc32_total = ~0;
+	
+    for ( ; size--; ++buffer) {
+      crc = (crc >> 8) ^ crc_table[(crc ^ *buffer) & 0xff];
+      crc32_total = (crc >> 8) ^ crc_table[(crc32_total ^ *buffer) & 0xff];
+    }
+
+  *main_val = ~crc;
+}
+*/
