@@ -66,6 +66,11 @@
 #define MREQ_STATUS                     1051
 #define MPATCH_MINISTATUS               1051
 #define APATCH_GO                       1052
+#define MREQ_MINISTATUS                 1052
+#define MREQ_PROGRESS_BAR               1053
+#define MREQ_GO                         1054
+#define FREQ_STATUS                     1055
+#define FREQ_GO                         1056
 
 // Next default values for new objects
 // 
@@ -73,7 +78,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1053
+#define _APS_NEXT_CONTROL_VALUE         1057
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

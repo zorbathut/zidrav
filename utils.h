@@ -5,7 +5,7 @@
 
 #define strncpyn( dest, source, len ) strncpy( dest, source, len ); dest[len] = '\0';
 
-int powerof2( int power );
+int powerof2( int power );		// Grabs a power of 2 from a table - be warned, only goes up to 65536
 
 void ActivateGenericDD( HWND hwnd );
 int CALLBACK GenericDD( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam );

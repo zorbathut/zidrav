@@ -11,9 +11,12 @@
 
 int CALLBACK MakeChecksum(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 
-	OPENFILENAME ofn;
-	char szFileName[MAX_PATH];
-	unsigned long ThreadDump;
+	OPENFILENAME	ofn;
+	unsigned long	ThreadID;
+	unsigned long	ECode;
+
+	char	szFileName[MAX_PATH];
+	HANDLE	CurThread = NULL;
 
 	switch(Message)	{
 
@@ -83,7 +86,16 @@ int CALLBACK MakeChecksum(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			return FALSE;
 
 		case MCHECK_GO:
-			CreateThread( NULL, NULL, MakeChecksumGO, hwnd, NULL, &ThreadDump );
+			if( CurThread == NULL ) {
+				CurThread = CreateThread( NULL, NULL, MakeChecksumGO, hwnd, NULL, &ThreadID );
+				return TRUE;
+			} else {
+				GetExitCodeThread( CurThread, &ECode );
+				if( ECode == STILL_ACTIVE )
+					TerminateThread( CurThread, NULL );
+				CloseHandle( CurThread );
+				CurThread = CreateThread( NULL, NULL, MakeChecksumGO, hwnd, NULL, &ThreadID );
+			}
 			return TRUE;
 
 		case IDCANCEL:
@@ -101,10 +113,12 @@ int CALLBACK MakeChecksum(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 int CALLBACK MakePatch( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam ) {
 	
-	unsigned long ThreadDump;
+	OPENFILENAME	ofn;
+	unsigned long	ThreadID;
+	unsigned long	ECode;
 
-  	OPENFILENAME ofn;
-	char szFileName[MAX_PATH];
+	char	szFileName[MAX_PATH];
+	HANDLE	CurThread = NULL;
 
 	switch(Message)	{
 
@@ -184,7 +198,16 @@ int CALLBACK MakePatch( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam ) 
 			return FALSE;
 
 		case MPATCH_GO:
-			CreateThread( NULL, NULL, MakePatchGO, hwnd, NULL, &ThreadDump );
+			if( CurThread == NULL ) {
+				CurThread = CreateThread( NULL, NULL, MakePatchGO, hwnd, NULL, &ThreadID );
+				return TRUE;
+			} else {
+				GetExitCodeThread( CurThread, &ECode );
+				if( ECode == STILL_ACTIVE )
+					TerminateThread( CurThread, NULL );
+				CloseHandle( CurThread );
+				CurThread = CreateThread( NULL, NULL, MakePatchGO, hwnd, NULL, &ThreadID );
+			}
 			return TRUE;
 
 		case IDCANCEL:
@@ -202,8 +225,12 @@ int CALLBACK MakePatch( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam ) 
 
 int CALLBACK MakeRequest( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam ) {
 	
-  	OPENFILENAME ofn;
-	char szFileName[MAX_PATH];
+	OPENFILENAME	ofn;
+	unsigned long	ThreadID;
+	unsigned long	ECode;
+
+	char	szFileName[MAX_PATH];
+	HANDLE	CurThread = NULL;
 
 	switch(Message)	{
 
@@ -282,6 +309,19 @@ int CALLBACK MakeRequest( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam 
 			}
 			return FALSE;
 
+		case MREQ_GO:
+			if( CurThread == NULL ) {
+				CurThread = CreateThread( NULL, NULL, MakeRequestGO, hwnd, NULL, &ThreadID );
+				return TRUE;
+			} else {
+				GetExitCodeThread( CurThread, &ECode );
+				if( ECode == STILL_ACTIVE )
+					TerminateThread( CurThread, NULL );
+				CloseHandle( CurThread );
+				CurThread = CreateThread( NULL, NULL, MakeRequestGO, hwnd, NULL, &ThreadID );
+			}
+			return TRUE;
+
 		case IDCANCEL:
 			EndDialog(hwnd, 0);
 			return TRUE;
@@ -296,8 +336,12 @@ int CALLBACK MakeRequest( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam 
 
 int CALLBACK FillRequest( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam ) {
 	
-  	OPENFILENAME ofn;
-	char szFileName[MAX_PATH];
+	OPENFILENAME	ofn;
+	unsigned long	ThreadID;
+	unsigned long	ECode;
+
+	char	szFileName[MAX_PATH];
+	HANDLE	CurThread = NULL;
 
 	switch(Message)	{
 
@@ -375,6 +419,18 @@ int CALLBACK FillRequest( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam 
 			}
 			return FALSE;
 
+		case FREQ_GO:
+			if( CurThread == NULL ) {
+				CurThread = CreateThread( NULL, NULL, FillRequestGO, hwnd, NULL, &ThreadID );
+				return TRUE;
+			} else {
+				GetExitCodeThread( CurThread, &ECode );
+				if( ECode == STILL_ACTIVE )
+					TerminateThread( CurThread, NULL );
+				CloseHandle( CurThread );
+				CurThread = CreateThread( NULL, NULL, FillRequestGO, hwnd, NULL, &ThreadID );
+			}
+			return TRUE;
 
 		case IDCANCEL:
 			EndDialog(hwnd, 0);
@@ -390,9 +446,12 @@ int CALLBACK FillRequest( HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam 
 
 int CALLBACK ApplyPatch(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 
-	OPENFILENAME ofn;
-	char szFileName[MAX_PATH];
-	unsigned long ThreadDump;
+	OPENFILENAME	ofn;
+	unsigned long	ThreadID;
+	unsigned long	ECode;
+
+	char	szFileName[MAX_PATH];
+	HANDLE	CurThread = NULL;
 
 	switch(Message)	{
 
@@ -440,7 +499,16 @@ int CALLBACK ApplyPatch(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 			return TRUE;
 
 		case APATCH_GO:
-			CreateThread( NULL, NULL, ApplyPatchGO, hwnd, NULL, &ThreadDump );
+			if( CurThread == NULL ) {
+				CurThread = CreateThread( NULL, NULL, ApplyPatchGO, hwnd, NULL, &ThreadID );
+				return TRUE;
+			} else {
+				GetExitCodeThread( CurThread, &ECode );
+				if( ECode == STILL_ACTIVE )
+					TerminateThread( CurThread, NULL );
+				CloseHandle( CurThread );
+				CurThread = CreateThread( NULL, NULL, ApplyPatchGO, hwnd, NULL, &ThreadID );
+			}
 			return TRUE;
 
 		case IDCANCEL:

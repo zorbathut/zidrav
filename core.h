@@ -10,17 +10,7 @@
 #define PVER			"\x02\x00"
 #define QVER			"\x02\x00"
 
-//#define PROGRESSJUMP	1
-
-/*#ifdef LINICKS
-	#define SOLIDBLOCK	  '-'
-	#define EMPTYBLOCK	  '.'
-  #else
-	#define SOLIDBLOCK	  178
-	#define EMPTYBLOCK	  176
-#endif*/
-
-const long crc_table[256] = {
+const long crc_table[256] = {		// it's just easier this way, alright? It's one K of data, I'm allowed a global if I want one
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
   0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
   0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
@@ -90,6 +80,7 @@ void ApplyPatchLUL( HWND hwnd, BOOL lock );
 void MakeChecksumPBT( HWND hwnd, BOOL pbvis );				// Progress Bar Toggle
 void MakePatchPBT( HWND hwnd, BOOL pbvis );
 void MakeRequestPBT( HWND hwnd, BOOL pbvis );
+// no progess bar for ApplyPatch or FillRequest :)
 
 void CreateChecksum( char *buffer, long size, long *crc );
 

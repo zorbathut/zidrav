@@ -3,30 +3,38 @@
 <pre>
 <h1>Build Log</h1>
 <h3>
---------------------Configuration: Zidrav - Win32 Debug--------------------
+--------------------Configuration: Zidrav - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\WINDOWS\TEMP\RSP6163.TMP" with contents
+Creating command line "rc.exe /l 0x409 /fo"Release/zidrav.res" /d "NDEBUG" "C:\WINDOWS\Desktop\werk\sea\Zidrav Old Vers\v3.0\zidrav.rc"" 
+Creating temporary file "C:\WINDOWS\TEMP\RSPA1C3.TMP" with contents
 [
-/nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR"Debug/" /Fp"Debug/Zidrav.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"C:\Windows\Desktop\werk\sea\Zidrav\iface.cpp"
+/nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /FR"Release/" /Fp"Release/Zidrav.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"C:\WINDOWS\Desktop\werk\sea\Zidrav Old Vers\v3.0\core.cpp"
+"C:\WINDOWS\Desktop\werk\sea\Zidrav Old Vers\v3.0\iface.cpp"
+"C:\WINDOWS\Desktop\werk\sea\Zidrav Old Vers\v3.0\main.cpp"
+"C:\WINDOWS\Desktop\werk\sea\Zidrav Old Vers\v3.0\utils.cpp"
 ]
-Creating command line "cl.exe @C:\WINDOWS\TEMP\RSP6163.TMP" 
-Creating temporary file "C:\WINDOWS\TEMP\RSP6164.TMP" with contents
+Creating command line "cl.exe @C:\WINDOWS\TEMP\RSPA1C3.TMP" 
+Creating temporary file "C:\WINDOWS\TEMP\RSPA1C4.TMP" with contents
 [
-comctl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /incremental:yes /pdb:"Debug/Zidrav.pdb" /debug /machine:I386 /out:"Debug/Zidrav.exe" /pdbtype:sept 
-.\Debug\core.obj
-.\Debug\iface.obj
-.\Debug\main.obj
-.\Debug\utils.obj
-.\Debug\zidrav.res
+libcmt.lib msvcrt.lib comctl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /incremental:no /pdb:"Release/Zidrav.pdb" /machine:I386 /out:"Release/Zidrav.exe" 
+".\Release\core.obj"
+".\Release\iface.obj"
+".\Release\main.obj"
+".\Release\utils.obj"
+".\Release\zidrav.res"
 ]
-Creating command line "link.exe @C:\WINDOWS\TEMP\RSP6164.TMP"
+Creating command line "link.exe @C:\WINDOWS\TEMP\RSPA1C4.TMP"
 <h3>Output Window</h3>
+Compiling resources...
 Compiling...
+core.cpp
 iface.cpp
+main.cpp
+utils.cpp
 Linking...
-Creating command line "bscmake.exe /nologo /o"Debug/Zidrav.bsc"  .\Debug\core.sbr .\Debug\iface.sbr .\Debug\main.sbr .\Debug\utils.sbr"
+Creating command line "bscmake.exe /nologo /o"Release/Zidrav.bsc"  ".\Release\core.sbr" ".\Release\iface.sbr" ".\Release\main.sbr" ".\Release\utils.sbr""
 Creating browse info file...
 <h3>Output Window</h3>
 
