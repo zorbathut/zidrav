@@ -88,11 +88,16 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 
 	if( cdtlen < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
 						// 4 for comparison checksum - who says it can't be a .cdt of a 0-size file? :)
-		iface( UPD_BIGSTAT, IDS_UPT_INVCDT, NULL );
-		return; }
+		//iface( UPD_BIGSTAT, IDS_UPT_INVCDT, NULL );
+		*efound = -1;
+		return; 
+	}
 
 	if( VerifyStream( cdti, cdtlen, IDS_UPT_INVCDT, CSV, iface ) )
+	{
+		*efound = -1;
 		return;
+	}
 
 	cdti.seekg( 10 );
 
@@ -108,6 +113,7 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 		alter.varbeta = (void *)filesize;
 
 		iface( UPD_BIGSTAT, NULL, &alter );
+		*efound = -2;
 		return;
 	}
 
@@ -176,6 +182,8 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 
 		MakeOverallChecksum( output, curolen );
 
+	} else {
+		iface( UPD_PBHIDE, NULL, NULL );
 	}
 
 }
@@ -379,7 +387,7 @@ void FillRequestCore( istream &cdqi, istream &vstr, iostream &output, int cdqlen
 
 }
 
-void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KStatIface iface ) {
+int ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KStatIface iface ) {
 
 	long filesize;
 	long blocksize;
@@ -388,15 +396,16 @@ void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KSt
 
 	long offset;
 
-	char *buffer;
+	char *buffer = NULL;
 
 	if( cdplen < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
 						// 4 for comparison checksum
-		iface( UPD_BIGSTAT, IDS_UPT_INVCDP, NULL );
-		return; }
+		//iface( UPD_BIGSTAT, IDS_UPT_INVCDP, NULL );
+		return -1; 
+	}
 
-	if( VerifyStream( cdpi, cdplen, IDS_UPT_INVCDP, PSV, iface ) )
-		return;
+	if( VerifyStream( cdpi, cdplen, IDS_UPT_INVCDP, PSV, iface ) )	
+		return -1;	
 
 	cdpi.seekg( 10 );
 
@@ -411,7 +420,7 @@ void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KSt
 		alter.varbeta = (void *)filesize;
 
 		iface( UPD_BIGSTAT, NULL, &alter );
-		return;
+		return -2;
 	}
 
 	cdpi.read( (char *)&offset, 4 );
@@ -437,6 +446,7 @@ void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KSt
 	}
 
 	delete [] buffer;
+	return 0;
 
 }
 

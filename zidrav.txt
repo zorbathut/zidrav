@@ -1,0 +1,62 @@
+Docs for ZIDRAV 3.2
+-------------------------------
+1. What is ZIDRAV? 
+2. Quick Start
+3. FAQ
+
+-------------------------------
+1. What is ZIDRAV?
+ZIDRAV stands for "Zorba's Incredible Data Repairer And Verifier", and is an extremely useful tool for cross-checking files that have been transfered via HTTP, FTP, or some other method. What it does, is generates a checksum file, and then by comparing that checksum with the original file, it creates a patch file that can repair the corrupted file. Very cool, and saves re-downloading.
+
+-------------------------------
+2. Quick Start
+ZIDRAV is pretty simple to use.
+It requires 2 people to use, and I'll explain by example.
+
+A is the person with a corrupted file.
+B is the person with the original file. 
+
+1. A runs ZIDRAV, and chooses the top option, "Make Checksum File".
+A then selects the file that needs to be checked, and a filename for the CDT (checksum) file, then hits "Go".
+	
+2. Now, A sends the CDT file that ZIDRAV generated to B.
+B then selects "Make Patch File", and selects the CDT file that A sent him, the original file, and optionally changes the name of the patch file (CDP), and finally presses the "Go" button.
+	
+3. B now sends the CDP file to A. A chooses "Apply Patch File", and selects the CDP file, and the corrupted file that he 
+has, then , you guessed it, hits the "Go" button. 
+
+4. A now does the happy dance of joy, since his once corrupted file is now fixed and working perfectly. 
+
+-------------------------------
+3. FAQ
+
+Q: What are those other buttons for?
+A: Stuff. 
+Well, actually... The "Make Batch Checksums" allows you to create CDT files from a whole directory. The filemask allows you to choose files *not* to make .cdts of. Seperate the files by semicolons. Wildcards work, but only *. Uh, I think. (Good God this old code is ugly.) The two disabled buttons are for some future functionality, and have no real purpose at this time. Actually, they work just fine, but they don't do anything useful, so I turned 'em off.
+	
+Q: What's with the "Block Size" slider?
+A: It lets you change the size of the generated files. A larger block size makes smaller CDT files and larger CDP files, and a smaller one works the other way. But really, you shouldn't ever have to change it.
+
+Q: What does "U. G. I." stand for?
+A: Ultimo Grudly Incarnation. If you can name the book I got "grudly" from, you get a prize.
+
+Q: Can I send you love letters, money, food, beer, or other cool objects I have lying around my house?
+A: As long as I don't have to pay postage and it won't attract cops.
+
+Q: How can I get help or updates?
+A: Well, you can find me on EFnet as ZorbaTHut, or you can email me at zorbathut@uswest.net
+
+Q: How come some parts of this FAQ are really easy to read, and some parts are mindnumbingly confusing and convoluted?
+A: Easy. Some nice guy on IRC whose name I will not mention unless he asks me to volunteered to write up docs for me. He did a pretty good job, but he made a few mistakes (understandable, since even I don't know what it's doing at this point half the time) so I decided to correct them. Guess which parts are the easy-to-understand parts? That's right - his. What can I say, I'm a programmer.
+
+Q: What's the chance of a newer version?
+A: Depends on how many people E-mail me asking for More Features. Since my code is so incredibly ugly that I don't want to look at it anymore (it was back before I really knew what I was doing) I'd end up rewriting the whole thing anyway, which I don't want to do without major incentive, I.E. getting people to stop bugging me to make a new version. Or, uh, other things. (sound of Zorba pulling his mind out of the gutter)
+
+Q: Ya know, it'd be really nice if those "..." buttons in the batch checksum maker had "new folder" buttons.
+A: That's not even a question! Ha ha ha. Sorry, old joke. Yeah, it would, wouldn't it? I'm not in the mood to muck about with Win32 API stuff. I'll figure it out later, maybe :)
+
+Q: Is there anything cool I should know about?
+A: Yeah, you can drag'n'drop files into the file selection areas. It's a lot faster than using the "..." buttons. And there's porn hidden in the program somewhere.
+
+(That oughta keep 'em busy.)
+

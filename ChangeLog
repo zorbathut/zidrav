@@ -1,0 +1,8 @@
+3.5
+    * correct messages are displayed if CDT or CDP is demaged or file size 
+      is different than oryginal (previously it was allways 'Completed, no
+      corruption detected')
+
+3.4
+    * Fixed bug which made ZIDRAV unable of creating correct CDT or CDP if file 
+      size was multiple of blocksize

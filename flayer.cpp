@@ -95,12 +95,30 @@ void MakePatchFLayer( char cdtFName[], char vfileFName[], char outputFName[], KS
 	vFile.close();
 	outFile.close();
 
-	if( efound )
+
+	switch (efound)
+	{
+		case 1: // corruption found, patch created
+			iface( UPD_BIGSTAT, IDS_UPT_CCDPGEN, NULL );
+			break;
+		case 0: // corruption not found			
+			iface( UPD_BIGSTAT, IDS_UPT_CNOCORR, NULL );
+			DeleteFile( outputFName );
+			break;
+		case -1: // invalid CDT
+			iface( UPD_BIGSTAT, IDS_UPT_INVCDT, NULL );
+			DeleteFile( outputFName );
+			break;
+		case -2: // verified filesize is different than recorded in CDT
+			DeleteFile( outputFName );
+			break;		
+	}
+	/*if( efound )
 		iface( UPD_BIGSTAT, IDS_UPT_CCDPGEN, NULL );
 	  else {
 		DeleteFile( outputFName );
 		iface( UPD_BIGSTAT, IDS_UPT_CNOCORR, NULL );
-	}
+	}*/
 
 }
 
@@ -226,11 +244,21 @@ void ApplyPatchFLayer( char cdpFName[], char pfileFName[], KStatIface iface ) {
 		iface( UPD_BIGSTAT, IDS_UPT_ERROPFILE, NULL );
 		return; }		// Open output file
 
-	ApplyPatchCore( cdpFile, pFile, cdspecs.st_size, pspecs.st_size, iface );
+	int errc = ApplyPatchCore( cdpFile, pFile, cdspecs.st_size, pspecs.st_size, iface );
 
 	cdpFile.close();
 	pFile.close();
 
-	iface( UPD_BIGSTAT, IDS_UPT_COMPATCH, NULL );
-
+	switch (errc)
+	{
+		case 0: // file patched			
+			iface( UPD_BIGSTAT, IDS_UPT_COMPATCH, NULL );
+			break;
+		case -1: // invalid CDP
+			iface( UPD_BIGSTAT, IDS_UPT_INVCDP, NULL );
+			break;
+		case -2: // patch target filesize is different than recorded in CDP
+			break;		
+	}
+	
 }

@@ -107,7 +107,7 @@ void MakeChecksumCore( istream &input, iostream &output, int blocksize, int data
 void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, int vstrlen, int * efound, KStatIface iface );
 void MakeRequestCore( istream &cdti, istream &dstr, iostream &output, int cdtlen, int dstrlen, int * efound, KStatIface iface );
 void FillRequestCore( istream &cdqi, istream &vstr, iostream &output, int cdqlen, int vstrlen, int * efound, KStatIface iface );
-void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KStatIface iface );
+int ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KStatIface iface );
 
 int VerifyStream( istream &input, int datalen, int emsg, KSigver sigver, KStatIface iface );
 
