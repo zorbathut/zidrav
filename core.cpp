@@ -1,1127 +1,498 @@
 
 #include <fstream.h>
-#include <sys/stat.h>
-#include <afxcmn.h>
-#include <afxwin.h>
-#include <commdlg.h>
-#include <winbase.h>
-#include <windows.h>
 
 #include "core.h"
 #include "utils.h"
+#include "iface.h"
 #include "resource.h"
 
-DWORD WINAPI MakeChecksumGO( LPVOID lpParameter ) {
+void MakeChecksumCore( istream &input, iostream &output, int blocksize, int datalen, KStatIface iface ) {
 
-	HWND	hwnd = (HWND)lpParameter;
+	char	*buffer;
+	int		i;
+	long	crc;
 
+	output.write( ZC, 8 );
+	output.write( CVER, 2 );
+	output.write( (char *)&datalen, 4 );
+	output.write( (char *)&blocksize, 4 );
 
-	long		crc;	// the current CRC value
-	int			cdtlen;	// length of the .CDT, used for the final reverification
+	iface( UPD_PBRANGE, datalen, NULL );
+	iface( UPD_PBSET, 0, NULL );
+	iface( UPD_PBSHOW, NULL, NULL );
 
-	struct stat	filespecs;
+	buffer = new char[blocksize];
 
-	int			i;		// generic looping var
-
-	int			blocksize;
-	char		*dataBuffer;
-	char		nameBuffer[MAX_PATH];
-
-	ifstream	inFile;
-	fstream		outFile;				// possibly a bit misleading, but it's easier than copying the data to a buffer
-
-	MakeChecksumLUL( hwnd, TRUE );		// Don't let them leave! KYAHAHAAHAHAHAHAHAAH!
-
-	SetDlgItemText( hwnd, MCHECK_STATUS, "Processing . . ." );
-
-	blocksize = GetDlgItemInt( hwnd, MCHECK_BLOCKSIZE_FIELD, NULL, FALSE );
-	dataBuffer = new char[blocksize];
-
-	GetDlgItemText( hwnd, MCHECK_INPUT_FIELD, nameBuffer, MAX_PATH );
-	inFile.open( nameBuffer, ios::binary );
-	if( !inFile ) {
-		SetDlgItemText( hwnd, MCHECK_STATUS, "Error opening input file" );
-		delete [] dataBuffer;
-		MakeChecksumLUL( hwnd, FALSE );
-		return 1; }					// Open input file
-
-	stat( nameBuffer, &filespecs );	// Get the file size, while the nameBuffer is set properly
-
-	GetDlgItemText( hwnd, MCHECK_OUTPUT_FIELD, nameBuffer, MAX_PATH );
-	outFile.open( nameBuffer, ios::binary | ios::in | ios::out );
-	if( !inFile ) {
-		SetDlgItemText( hwnd, MCHECK_STATUS, "Error opening output file" );
-		delete [] dataBuffer;
-		inFile.close();
-		MakeChecksumLUL( hwnd, FALSE );
-		return 1; }					// Open output file
-
-	outFile.write( ZC, 8 );
-	outFile.write( CVER, 2 );
-	outFile.write( (char *)&filespecs.st_size, 4 );
-	outFile.write( (char *)&blocksize, 4 );
-
-	SendMessage( GetDlgItem( hwnd, MCHECK_PROGRESS_BAR ), PBM_SETPOS, 0, 0 );
-	SendMessage( GetDlgItem( hwnd, MCHECK_PROGRESS_BAR ), PBM_SETRANGE32, 0, filespecs.st_size );
-	MakeChecksumPBT( hwnd, TRUE );		// Progress bar armed and ready, Captain
-
-	for( filespecs.st_size % blocksize ? i = -1 : i = 0; i < filespecs.st_size / blocksize; i++ ) {
+	for( datalen % blocksize ? i = -1 : i = 0; i < datalen / blocksize; i++ ) {
 
 		if( i >= 0 && !( i % 32 ) )
-			SendMessage( GetDlgItem( hwnd, MCHECK_PROGRESS_BAR ), PBM_SETPOS, i * blocksize, 0 );
+			iface( UPD_PBSET, i * blocksize, NULL );
 
-		inFile.read( dataBuffer, blocksize );
+		input.read( buffer, blocksize );
 
-		if( i == filespecs.st_size / blocksize - 1 )	// If it's the end of the file, only make the checksum for what's left
-			CreateChecksum( dataBuffer, filespecs.st_size % blocksize, &crc );
+		if( i == datalen / blocksize - 1 )	// If it's the end of the file, only make the checksum for what's left
+			CreateChecksum( buffer, datalen % blocksize, &crc );
 		  else
-			CreateChecksum( dataBuffer, blocksize, &crc );
+			CreateChecksum( buffer, blocksize, &crc );
 
-		outFile.write( (char *)&crc, 4 );
+		output.write( (char *)&crc, 4 );
 
 	}
 
-	inFile.close();
+	delete [] buffer;
 
-	SetDlgItemText( hwnd, MCHECK_STATUS, "Creating verification checksum . . ." );
-	MakeChecksumPBT( hwnd, FALSE );
+	iface( UPD_BIGSTAT, IDS_UPT_CVERCHECK, NULL );
+	iface( UPD_PBHIDE, NULL, NULL );
 
-	delete [] dataBuffer;
-
-	cdtlen = 18 + ( filespecs.st_size / blocksize + 1 ) * 4;		// time to calculate this
-
-	dataBuffer = new char[ cdtlen ];
-
-	outFile.flush();
-	outFile.seekp( 0 );
-
-	outFile.read( dataBuffer, cdtlen );
-
-	CreateChecksum( dataBuffer, cdtlen, &crc );
-
-	outFile.write( (char *)&crc, 4 );
-
-	inFile.close();
-	outFile.close();
-	delete [] dataBuffer;
-
-	SetDlgItemText( hwnd, MCHECK_STATUS, "Completed" );
-	MakeChecksumLUL( hwnd, FALSE );	// Go on, get outa here
-
-	Sleep( 4000 );
-
-	SetDlgItemText( hwnd, MCHECK_STATUS, "Ready" );
-
-	return 0;
+	MakeOverallChecksum( output, 18 + ( datalen / blocksize + 1 ) * 4 );
 
 }
 
-void MakeChecksumLUL( HWND hwnd, BOOL lock ) {
+void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, int vstrlen, int * efound, KStatIface iface ) {
 
-	EnableWindow( GetDlgItem( hwnd, MCHECK_GO ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MCHECK_INPUT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MCHECK_INPUT_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MCHECK_OUTPUT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MCHECK_OUTPUT_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MCHECK_BLOCKSIZE_SLIDER ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MCHECK_BLOCKSIZE_FIELD ), !lock );
+	long filesize;
+	long blocksize;
 
-}
+	long crc;
+	long cdtcrc;
 
-void MakeChecksumPBT( HWND hwnd, BOOL pbvis ) {
+	long curbs;
 
-	ShowWindow( GetDlgItem( hwnd, MCHECK_STATUS ), !pbvis );
-	ShowWindow( GetDlgItem( hwnd, MCHECK_PROGRESS_BAR ), pbvis );
+	int i;
 
-}
+	long curolen;
+	long temp;
 
-DWORD WINAPI MakePatchGO( LPVOID lpParameter ) {
+	char *buffer;
 
-	HWND	hwnd = (HWND)lpParameter;
+	*efound = 0;
 
-	char		minibuff[9];	// used for file verification purposes
+	if( cdtlen < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
+						// 4 for comparison checksum - who says it can't be a .cdt of a 0-size file? :)
+		iface( UPD_BIGSTAT, IDS_UPT_INVCDT, NULL );
+		return; }
 
-	long		crc;		// the current CRC value
-	long		templen;	// generic temporary length holder :)
-	long		minitemp;	// another generic temp variable - look, I find them easy, OK?
-	long		curbs;		// current blocksize
-	long		curcdplen;	// current CDP length
+	if( VerifyStream( cdti, cdtlen, IDS_UPT_INVCDT, CSV, iface ) )
+		return;
 
-	int			cfound = 0;		// corruption found?
+	cdti.seekg( 10 );
 
-	struct stat	cdspecs;
-	struct stat	vspecs;
+	cdti.read( (char *)&filesize, 4 );
+	cdti.read( (char *)&blocksize, 4 );
 
-	int			i;		// generic looping var
+	if( filesize != vstrlen ) {
 
-	long		blocksize;
-	char		*dataBuffer;
-	char		*cdtPoint;		// moving pointer on the cdt buffer
-	char		*cdtBuffer;		// the whole thing has to be read in anyway in order to check the final checksum - might
-								// as well keep it there!
-	char		nameBuffer[MAX_PATH];
+		AlterStr alter;
 
-	ifstream	cdtFile;
-	ifstream	vFile;
-	fstream		outFile;				// possibly a bit misleading, but it's easier than copying the data to a buffer
+		alter.type = UPG_VFILESIZE;
+		alter.varalpha = (void *)vstrlen;
+		alter.varbeta = (void *)filesize;
 
-	MakePatchLUL( hwnd, TRUE );		// Don't let them leave! KYAHAHAAHAHAHAHAHAAH!
+		iface( UPD_BIGSTAT, NULL, &alter );
+		return;
+	}
 
-	SetDlgItemText( hwnd, MPATCH_STATUS, "Processing . . ." );
+	output.write( ZP, 8 );
+	output.write( PVER, 2 );
+	output.write( (char *)&filesize, 4 );
+	curolen = 14;
 
-	GetDlgItemText( hwnd, MPATCH_CDT_FIELD, nameBuffer, MAX_PATH );
-	cdtFile.open( nameBuffer, ios::binary );
-	if( !cdtFile ) {
-		SetDlgItemText( hwnd, MPATCH_STATUS, "Error opening .CDT file" );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }		// Open input file
-	stat( nameBuffer, &cdspecs );
+	buffer = new char[ blocksize ];
 
-	if( cdspecs.st_size < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
-		cdtFile.close();			// 4 for comparison checksum - who says it can't be a .cdt of a 0-size file? :)
-		SetDlgItemText( hwnd, MPATCH_STATUS, ".CDT file is too small to be valid" );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }		
-
-	cdtBuffer = new char[18];
-
-	cdtFile.read( cdtBuffer, 18 );	// Get the header, don't want to accidentally load a 100 meg file unless we have to :)
-
-	strncpyn( minibuff, cdtBuffer, 8 );	// Copy the signature in
+	iface( UPD_MINISTAT, IDS_UPT_SCAN, NULL);
+	iface( UPD_PBRANGE, vstrlen, NULL );
+	iface( UPD_PBSET, 0, NULL );
+	iface( UPD_PBSHOW, NULL, NULL );
 	
-	if( strcmp( minibuff, ZC ) ) {
-		delete [] cdtBuffer;
-		cdtFile.close();
-		SetDlgItemText( hwnd, MPATCH_STATUS, ".CDT file signature invalid" );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }
-
-	strncpyn( minibuff, &cdtBuffer[8], 2 ); // Version number comparison
-
-	if( strcmp( minibuff, CVER ) ) {
-
-		char	emsg[80] = "Invalid version number - file is v";		// error message
-		int		cv;				// converter int
-
-		cdtFile.close();
-		delete [] cdtBuffer;
-
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, ", program needs v" );
-
-		strcpy( minibuff, CVER);
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, MPATCH_STATUS, emsg );
-		MakePatchLUL( hwnd, FALSE );
-
-		return 1; }
-
-	templen = *(long *)&cdtBuffer[10];
-	blocksize = *(long *)&cdtBuffer[14];
-	delete [] cdtBuffer;				// won't be needing it in this size anymore
-
-	if( cdspecs.st_size != 22 + ( ( templen - 1 ) / blocksize + 1 ) * 4 ) {
-		cdtFile.close();
-		SetDlgItemText( hwnd, MPATCH_STATUS, ".CDT is incomplete" );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }
-
-	GetDlgItemText( hwnd, MPATCH_VFILE_FIELD, nameBuffer, MAX_PATH );
-	vFile.open( nameBuffer, ios::binary );
-	if( !vFile ) {
-		cdtFile.close();
-		SetDlgItemText( hwnd, MPATCH_STATUS, "Error opening verified file" );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }		// Open verified file
-
-	stat( nameBuffer, &vspecs );
-
-	if( templen != vspecs.st_size ) {
-
-		char emsg[80] = "Verified file size is ";
-
-		cdtFile.close();
-		vFile.close();
-
-		_itoa( vspecs.st_size, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, " instead of " );
-		_itoa( templen, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, MPATCH_STATUS, emsg );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }
-
-	// Okay, everything that can go wrong has at this point, let's load the .cdt into memory and verify its checksum
-
-	templen = cdspecs.st_size - 4;
-
-	cdtBuffer = new char[ cdspecs.st_size ];		// want to load the whole thing
-
-	cdtFile.seekg( 0 );								// go to the beginning
-	cdtFile.read( cdtBuffer, cdspecs.st_size );	// and pull it all
-
-	cdtFile.close();								// might as well close the .CDT now, it's all in memory
-
-	CreateChecksum( cdtBuffer, templen, &crc );
-
-	if( crc != *(int *)&cdtBuffer[ templen ] ) {
-		vFile.close();
-		delete [] cdtBuffer;
-		SetDlgItemText( hwnd, MPATCH_STATUS, ".CDT internal checksum failed" );
-		MakePatchLUL( hwnd, FALSE );
-		return 1; }
-
-	dataBuffer = new char[ blocksize ];
-
-	// Now if we've gotten THIS far, we can actually get around to doing something useful :)
-
-	SetDlgItemText( hwnd, MPATCH_MINISTATUS, "Scanning . . ." );
-	SendMessage( GetDlgItem( hwnd, MPATCH_PROGRESS_BAR ), PBM_SETPOS, 0, 0 );
-	SendMessage( GetDlgItem( hwnd, MPATCH_PROGRESS_BAR ), PBM_SETRANGE32, 0, vspecs.st_size );
-	MakePatchPBT( hwnd, TRUE );		// Progress bar armed and ready, Captain
-
-	cdtPoint = cdtBuffer + 18;
-
-	for( vspecs.st_size % blocksize ? i = -1 : i = 0; i < vspecs.st_size / blocksize; i++ ) {
+	for( vstrlen % blocksize ? i = -1 : i = 0; i < vstrlen / blocksize; i++ ) {
 
 		if( i >= 0 && !( i % 32 ) )
-			SendMessage( GetDlgItem( hwnd, MPATCH_PROGRESS_BAR ), PBM_SETPOS, i * blocksize, 0 );
+			iface( UPD_PBSET, i * blocksize, NULL );
 
-		if( i == vspecs.st_size / blocksize - 1 )
-			curbs = vspecs.st_size % blocksize;
+		if( i == vstrlen / blocksize - 1 )
+			curbs = vstrlen % blocksize;
 		  else
 			curbs = blocksize;
 
 		if( curbs == 0 )
 			curbs = blocksize;		// it's possible - if the file is a multiple of blocksize
 
-		vFile.read( dataBuffer, curbs );
+		vstr.read( buffer, curbs );
+		cdti.read( (char *)&cdtcrc, 4 );
 
-		CreateChecksum( dataBuffer, curbs, &crc );
+		CreateChecksum( buffer, curbs, &crc );
 
-		if( crc != *(long *)cdtPoint ) {
+		if( crc != cdtcrc ) {
 
-			char statbuf[80] = "Corruption found at ";
-			
-			minitemp = i * blocksize + blocksize;
-			_itoa( minitemp, &statbuf[strlen(statbuf)], 10 );
+			AlterStr alter;
 
-			SetDlgItemText( hwnd, MPATCH_MINISTATUS, statbuf );
+			alter.type = UPG_CORR;
+			alter.varalpha = (void *)(temp = i * blocksize + blocksize);
 
-			if( !cfound ) { // file has to be created
+			iface( UPD_MINISTAT, NULL, &alter );
 
-				GetDlgItemText( hwnd, MPATCH_OUTPUT_FIELD, nameBuffer, MAX_PATH );
-				outFile.open( nameBuffer, ios::binary | ios::in | ios::out | ios::trunc );
+			output.write( (char *)&temp, 4 );	// write the current offset
+			output.write( (char *)&curbs, 4 );
+			output.write( buffer, curbs );
 
-				outFile.write( ZP, 8 );
-				outFile.write( PVER, 2 );
-				outFile.write( (char *)&(vspecs.st_size), 4 );
+			curolen += 8 + curbs;
 
-				curcdplen = 14;
-
-				cfound = 1;
-
-			}				// file now exists, continue as normal
-
-			outFile.write( (char *)&minitemp, 4 );	// write the current offset
-			outFile.write( (char *)&curbs, 4 );
-			outFile.write( dataBuffer, curbs );
-
-			curcdplen += 8 + curbs;
+			*efound = 1;
 		
 		}
 		
-		cdtPoint += 4;
+	}
+
+	delete [] buffer;
+
+	if( *efound ) {
+
+		temp = -1;
+		output.write( (char *)&temp, 4 );			// end flag
+
+		iface( UPD_BIGSTAT, IDS_UPT_CVERCHECK, NULL );
+		iface( UPD_PBHIDE, NULL, NULL );
+
+		curolen += 4;
+
+		MakeOverallChecksum( output, curolen );
 
 	}
 
-	vFile.close();
+}
 
-	delete [] dataBuffer;
-	delete [] cdtBuffer;
+void MakeRequestCore( istream &cdti, istream &dstr, iostream &output, int cdtlen, int dstrlen, int * efound, KStatIface iface ) {
 
-	if( cfound ) {
+	long filesize;
+	long blocksize;
 
-		SetDlgItemText( hwnd, MPATCH_STATUS, "Creating verification checksum . . ." );
-		MakePatchPBT( hwnd, FALSE );
+	long crc;
+	long cdtcrc;
 
-		minitemp = -1;
+	long curbs;
 
-		outFile.write( (char *)&minitemp, 4 );
+	int i;
 
-		curcdplen += 4;
+	long curolen;
+	long temp;
 
-		outFile.flush();
+	char *buffer;
 
-		dataBuffer = new char[ curcdplen ];
+	*efound = 0;
 
-		outFile.seekp( 0 );
+	if( cdtlen < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
+						// 4 for comparison checksum - who says it can't be a .cdt of a 0-size file? :)
+		iface( UPD_BIGSTAT, IDS_UPT_INVCDT, NULL );
+		return; }
 
-		outFile.read( dataBuffer, curcdplen );
+	if( VerifyStream( cdti, cdtlen, IDS_UPT_INVCDT, CSV, iface ) )
+		return;
 
-		CreateChecksum( dataBuffer, curcdplen, &crc );
+	cdti.seekg( 10 );
 
-		outFile.write( (char *)&crc, 4 );
+	cdti.read( (char *)&filesize, 4 );
+	cdti.read( (char *)&blocksize, 4 );
 
-		outFile.close();
-		delete [] dataBuffer;
+	if( filesize != dstrlen ) {
 
-		SetDlgItemText( hwnd, MPATCH_STATUS, "Completed, patch file generated" );
+		AlterStr alter;
 
-	} else {
+		alter.type = UPG_VFILESIZE;
+		alter.varalpha = (void *)dstrlen;
+		alter.varbeta = (void *)filesize;
 
-		SetDlgItemText( hwnd, MPATCH_STATUS, "Completed, no corruption found" );
-		MakePatchPBT( hwnd, FALSE );
-
+		iface( UPD_BIGSTAT, NULL, &alter );
+		return;
 	}
 
-	MakePatchLUL( hwnd, FALSE );	// Go on, get outa here
+	output.write( ZQ, 8 );
+	output.write( QVER, 2 );
+	output.write( (char *)&filesize, 4 );
+	output.write( (char *)&blocksize, 4 );
+	curolen = 18;
 
-	Sleep( 4000 );					// These next few lines are what separate good designers/programmers from bad ones :)
+	buffer = new char[ blocksize ];
 
-	dataBuffer = new char[120];	
-
-	GetDlgItemText( hwnd, MPATCH_STATUS, dataBuffer, 120 );
-
-	if( !strcmp( dataBuffer, "Completed, patch file generated" ) || !strcmp( dataBuffer, "Completed, no corruption found" ) )
-		SetDlgItemText( hwnd, MPATCH_STATUS, "Ready" );		// I hope so, at least.
-
-	return 0;
-
-}
-
-void MakePatchLUL( HWND hwnd, BOOL lock ) {
-
-	EnableWindow( GetDlgItem( hwnd, MPATCH_GO ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MPATCH_CDT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MPATCH_CDT_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MPATCH_VFILE_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MPATCH_VFILE_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MPATCH_OUTPUT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MPATCH_OUTPUT_BUTTON ), !lock );
-
-}
-
-void MakePatchPBT( HWND hwnd, BOOL pbvis ) {
-
-	ShowWindow( GetDlgItem( hwnd, MPATCH_PROGRESS_BAR ), pbvis );
-	ShowWindow( GetDlgItem( hwnd, MPATCH_MINISTATUS ), pbvis );
-	ShowWindow( GetDlgItem( hwnd, MPATCH_STATUS ), !pbvis );
-
-}
-
-DWORD WINAPI MakeRequestGO( LPVOID lpParameter ) {
-
-	HWND	hwnd = (HWND)lpParameter;
-
-	char		minibuff[9];	// used for file verification purposes
-
-	long		crc;		// the current CRC value
-	long		templen;	// generic temporary length holder :)
-	long		minitemp;	// another generic temp variable - look, I find them easy, OK?
-	long		curbs;		// current blocksize
-	long		curcdqlen;	// current CDQ length
-
-	int			cfound = 0;		// corruption found?
-
-	struct stat	cdspecs;
-	struct stat	dspecs;
-
-	int			i;		// generic looping var
-
-	long		blocksize;
-	char		*dataBuffer;
-	char		*cdtPoint;		// moving pointer on the cdt buffer
-	char		*cdtBuffer;		// the whole thing has to be read in anyway in order to check the final checksum - might
-								// as well keep it there!
-	char		nameBuffer[MAX_PATH];
-
-	ifstream	cdtFile;
-	ifstream	dFile;
-	fstream		outFile;				// possibly a bit misleading, but it's easier than copying the data to a buffer
-
-	MakeRequestLUL( hwnd, TRUE );		// Don't let them leave! KYAHAHAAHAHAHAHAHAAH!
-
-	SetDlgItemText( hwnd, MREQ_STATUS, "Processing . . ." );
-
-	GetDlgItemText( hwnd, MREQ_CDT_FIELD, nameBuffer, MAX_PATH );
-	cdtFile.open( nameBuffer, ios::binary );
-	if( !cdtFile ) {
-		SetDlgItemText( hwnd, MREQ_STATUS, "Error opening .CDT file" );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }		// Open input file
-	stat( nameBuffer, &cdspecs );
-
-	if( cdspecs.st_size < 26 ) {	// 26 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
-		cdtFile.close();			// 4 for end trigger, 4 for comparison checksum - shouldn't be any 0-part request files out there
-									// doesn't hurt to be certain tho :)
-		SetDlgItemText( hwnd, MREQ_STATUS, ".CDT file is too small to be valid" );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }		
-
-	cdtBuffer = new char[18];
-
-	cdtFile.read( cdtBuffer, 18 );	// Get the header, don't want to accidentally load a 100 meg file unless we have to :)
-
-	strncpyn( minibuff, cdtBuffer, 8 );	// Copy the signature in
+	iface( UPD_MINISTAT, IDS_UPT_SCAN, NULL);
+	iface( UPD_PBRANGE, dstrlen, NULL );
+	iface( UPD_PBSET, 0, NULL );
+	iface( UPD_PBSHOW, NULL, NULL );
 	
-	if( strcmp( minibuff, ZC ) ) {
-		delete [] cdtBuffer;
-		cdtFile.close();
-		SetDlgItemText( hwnd, MREQ_STATUS, ".CDT file signature invalid" );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	strncpyn( minibuff, &cdtBuffer[8], 2 ); // Version number comparison
-
-	if( strcmp( minibuff, CVER ) ) {
-
-		char	emsg[80] = "Invalid version number - file is v";		// error message
-		int		cv;				// converter int
-
-		cdtFile.close();
-		delete [] cdtBuffer;
-
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, ", program needs v" );
-
-		strcpy( minibuff, CVER);
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, MREQ_STATUS, emsg );
-		MakeRequestLUL( hwnd, FALSE );
-
-		return 1; }
-
-	templen = *(long *)&cdtBuffer[10];
-	blocksize = *(long *)&cdtBuffer[14];
-	delete [] cdtBuffer;				// won't be needing it in this size anymore
-
-	if( cdspecs.st_size != 22 + ( ( templen - 1 ) / blocksize + 1 ) * 4 ) {
-		cdtFile.close();
-		SetDlgItemText( hwnd, MREQ_STATUS, ".CDT is incomplete or oversized" );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	GetDlgItemText( hwnd, MREQ_DFILE_FIELD, nameBuffer, MAX_PATH );
-	dFile.open( nameBuffer, ios::binary );
-	if( !dFile ) {
-		cdtFile.close();
-		SetDlgItemText( hwnd, MREQ_STATUS, "Error opening damaged file" );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }		// Open damaged file
-
-	stat( nameBuffer, &dspecs );
-
-	if( templen != dspecs.st_size ) {
-
-		char emsg[80] = "Damaged file size is ";
-
-		cdtFile.close();
-		dFile.close();
-
-		_itoa( dspecs.st_size, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, " instead of " );
-		_itoa( templen, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, MREQ_STATUS, emsg );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	// Okay, everything that can go wrong has at this point, let's load the .cdt into memory and verify its checksum
-
-	templen = cdspecs.st_size - 4;
-
-	cdtBuffer = new char[ cdspecs.st_size ];		// want to load the whole thing
-
-	cdtFile.seekg( 0 );								// go to the beginning
-	cdtFile.read( cdtBuffer, cdspecs.st_size );		// and pull it all
-													// let's just hope it's not too big, could be messy. oh well, so it's not the
-													// cleanest programming in the world ;)
-
-	cdtFile.close();								// might as well close the .CDT now, it's all in memory
-
-	CreateChecksum( cdtBuffer, templen, &crc );
-
-	if( crc != *(int *)&cdtBuffer[ templen ] ) {
-		dFile.close();
-		delete [] cdtBuffer;
-		SetDlgItemText( hwnd, MREQ_STATUS, ".CDT internal checksum failed" );
-		MakeRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	dataBuffer = new char[ blocksize ];
-
-	// Now if we've gotten THIS far, we can actually get around to doing something useful :)
-
-	SetDlgItemText( hwnd, MREQ_MINISTATUS, "Scanning . . ." );
-	SendMessage( GetDlgItem( hwnd, MREQ_PROGRESS_BAR ), PBM_SETPOS, 0, 0 );
-	SendMessage( GetDlgItem( hwnd, MREQ_PROGRESS_BAR ), PBM_SETRANGE32, 0, dspecs.st_size );
-	MakeRequestPBT( hwnd, TRUE );		// Progress bar armed and ready, Captain
-
-	cdtPoint = cdtBuffer + 18;
-
-	for( dspecs.st_size % blocksize ? i = -1 : i = 0; i < dspecs.st_size / blocksize; i++ ) {
+	for( dstrlen % blocksize ? i = -1 : i = 0; i < dstrlen / blocksize; i++ ) {
 
 		if( i >= 0 && !( i % 32 ) )
-			SendMessage( GetDlgItem( hwnd, MREQ_PROGRESS_BAR ), PBM_SETPOS, i * blocksize, 0 );
+			iface( UPD_PBSET, i * blocksize, NULL );
 
-		if( i == dspecs.st_size / blocksize - 1 )
-			curbs = dspecs.st_size % blocksize;
+		if( i == dstrlen / blocksize - 1 )
+			curbs = dstrlen % blocksize;
 		  else
 			curbs = blocksize;
 
 		if( curbs == 0 )
 			curbs = blocksize;		// it's possible - if the file is a multiple of blocksize
 
-		dFile.read( dataBuffer, curbs );
+		dstr.read( buffer, curbs );
+		cdti.read( (char *)&cdtcrc, 4 );
 
-		CreateChecksum( dataBuffer, curbs, &crc );
+		CreateChecksum( buffer, curbs, &crc );
 
-		if( crc != *(long *)cdtPoint ) {
+		if( crc != cdtcrc ) {
 
-			char statbuf[80] = "Corruption found at ";
-			
-			minitemp = i * blocksize + blocksize;
-			_itoa( minitemp, &statbuf[strlen(statbuf)], 10 );
+			AlterStr alter;
 
-			SetDlgItemText( hwnd, MREQ_MINISTATUS, statbuf );
+			alter.type = UPG_CORR;
+			alter.varalpha = (void *)(temp = i * blocksize + blocksize);
 
-			if( !cfound ) { // file has to be created
+			iface( UPD_MINISTAT, NULL, &alter );
 
-				GetDlgItemText( hwnd, MREQ_OUTPUT_FIELD, nameBuffer, MAX_PATH );
-				outFile.open( nameBuffer, ios::binary | ios::in | ios::out | ios::trunc );
+			output.write( (char *)&temp, 4 );	// write the current offset
 
-				outFile.write( ZQ, 8 );
-				outFile.write( QVER, 2 );
-				outFile.write( (char *)&(dspecs.st_size), 4 );
-				outFile.write( (char *)&blocksize, 4 );
+			curolen += 4;
 
-				curcdqlen = 18;
-
-				cfound = 1;
-
-			}				// file now exists, continue as normal
-
-			outFile.write( (char *)&minitemp, 4 );	// write the current offset
-			curcdqlen += 4;
+			*efound = 1;
 		
 		}
 		
-		cdtPoint += 4;
+	}
+
+	delete [] buffer;
+
+	if( *efound ) {
+
+		temp = -1;
+		output.write( (char *)&temp, 4 );			// end flag
+
+		iface( UPD_BIGSTAT, IDS_UPT_CVERCHECK, NULL );
+		iface( UPD_PBHIDE, NULL, NULL );
+
+		curolen += 4;
+
+		MakeOverallChecksum( output, curolen );
 
 	}
 
-	dFile.close();
+}
 
-	delete [] dataBuffer;
-	delete [] cdtBuffer;
+void FillRequestCore( istream &cdqi, istream &vstr, iostream &output, int cdqlen, int vstrlen, int *efound, KStatIface iface ) {
 
-	if( cfound ) {
+	long filesize;
+	long blocksize;
 
-		SetDlgItemText( hwnd, MREQ_STATUS, "Creating verification checksum . . ." );
-		MakeRequestPBT( hwnd, FALSE );
+	long curbs;
 
-		minitemp = -1;
+	long curolen;
+	long offset;
 
-		outFile.write( (char *)&minitemp, 4 );
+	char *buffer;
 
-		curcdqlen += 4;
+	*efound = 0;
 
-		outFile.flush();
+	if( cdqlen < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
+						// 4 for comparison checksum
+		iface( UPD_BIGSTAT, IDS_UPT_INVCDQ, NULL );
+		return; }
 
-		dataBuffer = new char[ curcdqlen ];
+	if( VerifyStream( cdqi, cdqlen, IDS_UPT_INVCDQ, QSV, iface ) )
+		return;
 
-		outFile.seekp( 0 );
+	cdqi.seekg( 10 );
 
-		outFile.read( dataBuffer, curcdqlen );
+	cdqi.read( (char *)&filesize, 4 );
+	cdqi.read( (char *)&blocksize, 4 );
 
-		CreateChecksum( dataBuffer, curcdqlen, &crc );
+	if( filesize != vstrlen ) {
 
-		outFile.write( (char *)&crc, 4 );
+		AlterStr alter;
 
-		outFile.close();
-		delete [] dataBuffer;
+		alter.type = UPG_VFILESIZE;
+		alter.varalpha = (void *)vstrlen;
+		alter.varbeta = (void *)filesize;
 
-		SetDlgItemText( hwnd, MREQ_STATUS, "Completed, request file generated" );
-
-	} else {
-
-		SetDlgItemText( hwnd, MREQ_STATUS, "Completed, no corruption found" );
-		MakeRequestPBT( hwnd, FALSE );
-
+		iface( UPD_BIGSTAT, NULL, &alter );
+		return;
 	}
 
-	MakeRequestLUL( hwnd, FALSE );	// Go on, get outa here
+	output.write( ZP, 8 );
+	output.write( PVER, 2 );
+	output.write( (char *)&filesize, 4 );
+	curolen = 14;
 
-	Sleep( 4000 );					// These next few lines are what separate good designers/programmers from bad ones :)
+	buffer = new char[ blocksize ];
 
-	dataBuffer = new char[120];	
+	cdqi.read( (char *)&offset, 4 );
 
-	GetDlgItemText( hwnd, MREQ_STATUS, dataBuffer, 120 );
+	while( offset != -1 ) {
 
-	if( !strcmp( dataBuffer, "Completed, request file generated" ) || !strcmp( dataBuffer, "Completed, no corruption found" ) )
-		SetDlgItemText( hwnd, MREQ_STATUS, "Ready" );		// I hope so, at least.
-
-	return 0;
-
-}
-
-void MakeRequestLUL( HWND hwnd, BOOL lock ) {
-
-	EnableWindow( GetDlgItem( hwnd, MREQ_GO ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MREQ_CDT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MREQ_CDT_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MREQ_DFILE_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MREQ_DFILE_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MREQ_OUTPUT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, MREQ_OUTPUT_BUTTON ), !lock );
-
-}
-
-void MakeRequestPBT( HWND hwnd, BOOL pbvis ) {
-
-	ShowWindow( GetDlgItem( hwnd, MREQ_PROGRESS_BAR ), pbvis );
-	ShowWindow( GetDlgItem( hwnd, MREQ_MINISTATUS ), pbvis );
-	ShowWindow( GetDlgItem( hwnd, MREQ_STATUS ), !pbvis );
-
-}
-
-DWORD WINAPI FillRequestGO( LPVOID lpParameter ) {
-
-	HWND	hwnd = (HWND)lpParameter;
-
-	char		minibuff[9];	// used for file verification purposes
-
-	long		crc;		// the current CRC value
-	long		templen;	// generic temporary length holder :)
-	long		minitemp;	// another generic temp variable - look, I find them easy, OK?
-	long		curbs;		// current blocksize
-	long		curcdplen;	// current CDP length
-
-	int			cfound = 0;		// corruption found?
-	int			offset;		// it makes things easier to be able to avoid *(int *)cdqPoint as often as possible :)
-
-	struct stat	cdspecs;
-	struct stat	vspecs;
-
-	long		blocksize;
-	char		*dataBuffer;
-	char		*cdqPoint;		// moving pointer on the cdq buffer
-	char		*cdqBuffer;		// the whole thing has to be read in anyway in order to check the final checksum - might
-								// as well keep it there!
-	char		nameBuffer[MAX_PATH];
-
-	ifstream	cdqFile;
-	ifstream	vFile;
-	fstream		outFile;				// possibly a bit misleading, but it's easier than copying the data to a buffer
-
-	FillRequestLUL( hwnd, TRUE );		// Don't let them leave! KYAHAHAAHAHAHAHAHAAH!
-
-	SetDlgItemText( hwnd, FREQ_STATUS, "Filling request . . ." );
-
-	GetDlgItemText( hwnd, FREQ_CDQ_FIELD, nameBuffer, MAX_PATH );
-	cdqFile.open( nameBuffer, ios::binary );
-	if( !cdqFile ) {
-		SetDlgItemText( hwnd, FREQ_STATUS, "Error opening .CDQ file" );
-		FillRequestLUL( hwnd, FALSE );
-		return 1; }		// Open input file
-	stat( nameBuffer, &cdspecs );
-
-	if( cdspecs.st_size < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
-		cdqFile.close();			// 4 for comparison checksum - who says it can't be a .cdt of a 0-size file? :)
-		SetDlgItemText( hwnd, FREQ_STATUS, ".CDQ file is too small to be valid" );
-		FillRequestLUL( hwnd, FALSE );
-		return 1; }		
-
-	cdqBuffer = new char[18];
-
-	cdqFile.read( cdqBuffer, 18 );	// Get the header, don't want to accidentally load a 100 meg file unless we have to :)
-
-	strncpyn( minibuff, cdqBuffer, 8 );	// Copy the signature in
-	
-	if( strcmp( minibuff, ZQ ) ) {
-		delete [] cdqBuffer;
-		cdqFile.close();
-		SetDlgItemText( hwnd, FREQ_STATUS, ".CDQ file signature invalid" );
-		FillRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	strncpyn( minibuff, &cdqBuffer[8], 2 ); // Version number comparison
-
-	if( strcmp( minibuff, QVER ) ) {
-
-		char	emsg[80] = "Invalid version number - file is v";		// error message
-		int		cv;				// converter int
-
-		cdqFile.close();
-		delete [] cdqBuffer;
-
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, ", program needs v" );
-
-		strcpy( minibuff, QVER);
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, FREQ_STATUS, emsg );
-		FillRequestLUL( hwnd, FALSE );
-
-		return 1; }
-
-	templen = *(long *)&cdqBuffer[10];
-	blocksize = *(long *)&cdqBuffer[14];
-	delete [] cdqBuffer;				// won't be needing it in this size anymore
-
-	GetDlgItemText( hwnd, FREQ_VFILE_FIELD, nameBuffer, MAX_PATH );
-	vFile.open( nameBuffer, ios::binary );
-	if( !vFile ) {
-		cdqFile.close();
-		SetDlgItemText( hwnd, FREQ_STATUS, "Error opening verified file" );
-		FillRequestLUL( hwnd, FALSE );
-		return 1; }		// Open verified file
-
-	stat( nameBuffer, &vspecs );
-
-	if( templen != vspecs.st_size ) {
-
-		char emsg[80] = "Verified file size is ";
-
-		cdqFile.close();
-		vFile.close();
-
-		_itoa( vspecs.st_size, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, " instead of " );
-		_itoa( templen, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, FREQ_STATUS, emsg );
-		FillRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	// Okay, everything that can go wrong has at this point, let's load the .cdt into memory and verify its checksum
-
-	templen = cdspecs.st_size - 4;
-
-	cdqBuffer = new char[ cdspecs.st_size ];		// want to load the whole thing
-
-	cdqFile.seekg( 0 );								// go to the beginning
-	cdqFile.read( cdqBuffer, cdspecs.st_size );		// and pull it all
-
-	cdqFile.close();								// might as well close the .CDT now, it's all in memory
-
-	CreateChecksum( cdqBuffer, templen, &crc );
-
-	if( crc != *(int *)&cdqBuffer[ templen ] ) {
-		vFile.close();
-		delete [] cdqBuffer;
-		SetDlgItemText( hwnd, FREQ_STATUS, ".CDQ internal checksum failed" );
-		FillRequestLUL( hwnd, FALSE );
-		return 1; }
-
-	dataBuffer = new char[ blocksize ];
-
-	// Now if we've gotten THIS far, we can actually get around to doing something useful :)
-
-	cdqPoint = cdqBuffer + 18;
-
-	while( ( offset = *(int *)cdqPoint ) != -1 ) {
-
-		if( offset + blocksize > vspecs.st_size )			// if it's the end of the file . . .
-			curbs = vspecs.st_size % blocksize;				// then the block will be teensy
+		if( offset + blocksize > vstrlen )			// if it's the end of the file . . .
+			curbs = vstrlen % blocksize;				// then the block will be teensy
 		  else
 			curbs = blocksize;								// otherwise it's normal :)
 
-		vFile.seekg( offset );
-		vFile.read( dataBuffer, curbs );
+		vstr.seekg( offset );
+		vstr.read( buffer, curbs );
 
-		if( !cfound ) { // file has to be created - remember those 0-point .cdqs, this could come in useful, and it's only
-						// a few cycles
-			GetDlgItemText( hwnd, FREQ_OUTPUT_FIELD, nameBuffer, MAX_PATH );
-			outFile.open( nameBuffer, ios::binary | ios::in | ios::out | ios::trunc );
+		output.write( (char *)&offset, 4 );	// write the current offset
+		output.write( (char *)&curbs, 4 );
+		output.write( buffer, curbs );
 
-			outFile.write( ZP, 8 );
-			outFile.write( PVER, 2 );
-			outFile.write( (char *)&(vspecs.st_size), 4 );
+		curolen += 8 + curbs;
 
-			curcdplen = 14;
+		cdqi.read( (char *)&offset, 4 );
 
-			cfound = 1;
-
-		}				// file now exists, continue as normal
-
-		outFile.write( (char *)&offset, 4 );	// write the current offset
-		outFile.write( (char *)&curbs, 4 );
-		outFile.write( dataBuffer, curbs );
-
-		curcdplen += 8 + curbs;
+		*efound = 1;
 		
-		cdqPoint += 4;
+	}
+
+	delete [] buffer;
+
+	if( *efound ) {
+
+		offset = -1;
+		output.write( (char *)&offset, 4 );			// end flag
+
+		iface( UPD_BIGSTAT, IDS_UPT_CVERCHECK, NULL );
+
+		curolen += 4;
+
+		MakeOverallChecksum( output, curolen );
 
 	}
 
-	vFile.close();
+}
 
-	delete [] dataBuffer;
-	delete [] cdqBuffer;
+void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KStatIface iface ) {
 
-	if( cfound ) {
+	long filesize;
+	long blocksize;
 
-		SetDlgItemText( hwnd, FREQ_STATUS, "Creating verification checksum . . ." );
+	long curbs = 0;
 
-		minitemp = -1;
+	long offset;
 
-		outFile.write( (char *)&minitemp, 4 );
+	char *buffer;
 
-		curcdplen += 4;
+	if( cdplen < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for blocksize, 4 for filesize,
+						// 4 for comparison checksum
+		iface( UPD_BIGSTAT, IDS_UPT_INVCDP, NULL );
+		return; }
 
-		outFile.flush();
+	if( VerifyStream( cdpi, cdplen, IDS_UPT_INVCDP, PSV, iface ) )
+		return;
 
-		dataBuffer = new char[ curcdplen ];
+	cdpi.seekg( 10 );
 
-		outFile.seekp( 0 );
+	cdpi.read( (char *)&filesize, 4 );
 
-		outFile.read( dataBuffer, curcdplen );
+	if( filesize != pstrlen ) {
 
-		CreateChecksum( dataBuffer, curcdplen, &crc );
+		AlterStr alter;
 
-		outFile.write( (char *)&crc, 4 );
+		alter.type = UPG_PFILESIZE;
+		alter.varalpha = (void *)pstrlen;
+		alter.varbeta = (void *)filesize;
 
-		outFile.close();
-		delete [] dataBuffer;
+		iface( UPD_BIGSTAT, NULL, &alter );
+		return;
+	}
 
-		SetDlgItemText( hwnd, FREQ_STATUS, "Completed, patch file generated" );
+	cdpi.read( (char *)&offset, 4 );
+	cdpi.read( (char *)&blocksize, 4 );
 
-	} else
-		SetDlgItemText( hwnd, FREQ_STATUS, "Completed, .CDQ file empty - no file generated" );
+	while( offset != -1 ) {
 
-	FillRequestLUL( hwnd, FALSE );	// Go on, get outa here
+		if( blocksize > curbs ) {
+			if( curbs != 0 )
+				delete [] buffer;
+			buffer = new char[ blocksize ];
+			curbs = blocksize;
+		}
 
-	Sleep( 4000 );					// These next few lines are what separate good designers/programmers from bad ones :)
+		cdpi.read( buffer, blocksize );
 
-	dataBuffer = new char[120];	
+		pstr.seekp( offset );
+		pstr.write( buffer, blocksize );
 
-	GetDlgItemText( hwnd, FREQ_STATUS, dataBuffer, 120 );
+		cdpi.read( (char *)&offset, 4 );
+		cdpi.read( (char *)&blocksize, 4 );
 
-	if( !strcmp( dataBuffer, "Completed, patch file generated" ) || !strcmp( dataBuffer, ".CDQ file empty - no file generated" ) )
-		SetDlgItemText( hwnd, FREQ_STATUS, "Ready" );		// I hope so, at least.
+	}
 
-	return 0;
+	delete [] buffer;
 
 }
 
-void FillRequestLUL( HWND hwnd, BOOL lock ) {
+int VerifyStream( istream &input, int datalen, int emsg, KSigver sigver, KStatIface iface ) {
 
-	EnableWindow( GetDlgItem( hwnd, FREQ_GO ), !lock );
-	EnableWindow( GetDlgItem( hwnd, FREQ_CDQ_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, FREQ_CDQ_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, FREQ_VFILE_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, FREQ_VFILE_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, FREQ_OUTPUT_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, FREQ_OUTPUT_BUTTON ), !lock );
+	char *buffer;
 
-}
+	char minibuff[9];
 
-DWORD WINAPI ApplyPatchGO( LPVOID lpParameter ) {
+	long crc;
 
-	HWND	hwnd = (HWND)lpParameter;
+	buffer = new char[10];
 
-	char		minibuff[9];	// used for file verification purposes
+	input.read( buffer, 10 );	// Get the header, don't want to accidentally load a 100 meg file unless we have to :)
 
-	long		crc;		// the current CRC value
-	long		templen;	// generic temporary length holder :)
-
-	int			offset;
-
-	struct stat	cdspecs;
-	struct stat	pspecs;
-
-	long		blocksize;
-	char		*cdpPoint;		// moving pointer on the cdp buffer
-	char		*cdpBuffer;		// the whole thing has to be read in anyway in order to check the final checksum
-								// - might as well keep it there!
-	char		nameBuffer[MAX_PATH];
-
-	ifstream	cdpFile;
-	fstream		pFile;
-
-	ApplyPatchLUL( hwnd, TRUE );		// Don't let them leave! KYAHAHAAHAHAHAHAHAAH!
-
-	SetDlgItemText( hwnd, APATCH_STATUS, "Patching . . ." );
-
-	GetDlgItemText( hwnd, APATCH_CDP_FIELD, nameBuffer, MAX_PATH );
-	cdpFile.open( nameBuffer, ios::binary );
-	if( !cdpFile ) {
-		SetDlgItemText( hwnd, APATCH_STATUS, "Error opening .CDP file" );
-		ApplyPatchLUL( hwnd, FALSE );
-		return 1; }		// Open input file
-	stat( nameBuffer, &cdspecs );
-
-	if( cdspecs.st_size < 22 ) {	// 22 == minimum size - 8 for signature, 2 for version, 4 for filesize, 4 for first blocksize,
-		cdpFile.close();			// 4 for comparison checksum - old versions would create .cdps with no data, bah
-		SetDlgItemText( hwnd, APATCH_STATUS, ".CDP file is too small to be valid" );
-		ApplyPatchLUL( hwnd, FALSE );
-		return 1; }		
-
-	cdpBuffer = new char[14];
-
-	cdpFile.read( cdpBuffer, 14 );	// Get the header, don't want to accidentally load a 100 meg file unless we have to :)
-
-	strncpyn( minibuff, cdpBuffer, 8 );	// Copy the signature in
+	strncpyn( minibuff, buffer, 8 );	// Copy the signature in
 	
-	if( strcmp( minibuff, ZP ) ) {
-		delete [] cdpBuffer;
-		cdpFile.close();
-		SetDlgItemText( hwnd, APATCH_STATUS, ".CDP file signature invalid" );
-		ApplyPatchLUL( hwnd, FALSE );
+	if( strcmp( minibuff, sigver.signature ) ) {
+		delete [] buffer;
+		iface( UPD_CURSTAT, emsg, NULL );
 		return 1; }
 
-	strncpyn( minibuff, &cdpBuffer[8], 2 ); // Version number comparison
+	strncpyn( minibuff, &buffer[8], 2 ); // Version number comparison
 
-	if( strcmp( minibuff, PVER ) ) {
+	if( strcmp( minibuff, sigver.version ) ) {
+		AlterStr alter;
 
-		char	emsg[80] = "Invalid version number - file is v";		// error message
-		int		cv;				// converter int
+		delete [] buffer;
 
-		cdpFile.close();
-		delete [] cdpBuffer;
+		alter.type = UPG_VERSION;
+		alter.varalpha = minibuff;
+		alter.varbeta = sigver.version;
 
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, ", program needs v" );
-
-		strcpy( minibuff, PVER);
-		cv = minibuff[0];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, "." );
-		cv = minibuff[1];
-		_itoa( cv, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, APATCH_STATUS, emsg );
-		ApplyPatchLUL( hwnd, FALSE );
+		iface( UPD_CURSTAT, NULL, &alter );
 
 		return 1; }
 
-	templen = *(long *)&cdpBuffer[10];
-	delete [] cdpBuffer;				// won't be needing it in this size anymore
+	delete [] buffer;
 
-	GetDlgItemText( hwnd, APATCH_PFILE_FIELD, nameBuffer, MAX_PATH );
-	pFile.open( nameBuffer, ios::binary | ios::in | ios::out );
-	if( !pFile ) {
-		cdpFile.close();
-		SetDlgItemText( hwnd, APATCH_STATUS, "Error opening file to patch" );
-		ApplyPatchLUL( hwnd, FALSE );
-		return 1; }		// Open verified file
+	buffer = new char[ datalen ];		// want to load the whole thing
 
-	stat( nameBuffer, &pspecs );
+	input.seekg( 0 );						// go to the beginning
+	input.read( buffer, datalen );		// and pull it all
 
-	if( templen != pspecs.st_size ) {
+	CreateChecksum( buffer, datalen - 4, &crc );
 
-		char emsg[80] = "Patch target size is ";
-
-		cdpFile.close();
-		pFile.close();
-
-		_itoa( pspecs.st_size, &emsg[strlen(emsg)], 10 );
-		strcat( emsg, " instead of " );
-		_itoa( templen, &emsg[strlen(emsg)], 10 );
-
-		SetDlgItemText( hwnd, APATCH_STATUS, emsg );
-		ApplyPatchLUL( hwnd, FALSE );
+	if( crc != *(int *)&buffer[ datalen - 4 ] ) {
+		delete [] buffer;
+		iface( UPD_CURSTAT, emsg, NULL );
 		return 1; }
 
-	// Okay, everything that can go wrong has at this point, let's load the .cdp into memory and verify its checksum
-
-	templen = cdspecs.st_size - 4;
-
-	cdpBuffer = new char[ cdspecs.st_size ];		// want to load the whole thing
-
-	cdpFile.seekg( 0 );								// go to the beginning
-	cdpFile.read( cdpBuffer, cdspecs.st_size );		// and pull it all
-
-	cdpFile.close();								// might as well close the .CDP now, it's all in memory
-
-	CreateChecksum( cdpBuffer, templen, &crc );
-
-	if( crc != *(int *)&cdpBuffer[ templen ] ) {
-		pFile.close();
-		delete [] cdpBuffer;
-		SetDlgItemText( hwnd, APATCH_STATUS, ".CDP internal checksum failed" );
-		ApplyPatchLUL( hwnd, FALSE );
-		return 1; }
-
-	// Now if we've gotten THIS far, we can actually get around to doing something useful :)
-
-	cdpPoint = cdpBuffer + 14;
-
-	while( ( offset = *(int *)cdpPoint ) != -1 ) {
-
-		blocksize = *(int *)(cdpPoint + 4);
-
-		cdpPoint += 8;
-
-		pFile.seekg( offset );
-
-		pFile.write( cdpPoint, blocksize );
-
-		cdpPoint += blocksize;
-
-	}
-
-	pFile.close();
-
-	delete [] cdpBuffer;
-
-	SetDlgItemText( hwnd, APATCH_STATUS, "File patched" );
-
-	ApplyPatchLUL( hwnd, FALSE );	// Go on, get outa here
-
-	Sleep( 4000 );					// These next few lines are what separate good designers/programmers from bad ones :)
-
-	cdpBuffer = new char[120];	
-
-	GetDlgItemText( hwnd, APATCH_STATUS, cdpBuffer, 120 );
-
-	if( !strcmp( cdpBuffer, "File patched" ) )
-		SetDlgItemText( hwnd, APATCH_STATUS, "Ready" );		// I hope so, at least.
+	delete [] buffer;
 
 	return 0;
 
 }
 
-void ApplyPatchLUL( HWND hwnd, BOOL lock ) {
 
-	EnableWindow( GetDlgItem( hwnd, APATCH_GO ), !lock );
-	EnableWindow( GetDlgItem( hwnd, APATCH_CDP_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, APATCH_CDP_BUTTON ), !lock );
-	EnableWindow( GetDlgItem( hwnd, APATCH_PFILE_FIELD ), !lock );
-	EnableWindow( GetDlgItem( hwnd, APATCH_PFILE_BUTTON ), !lock );
+void MakeOverallChecksum( iostream &st, long size ) {
+
+	char *buffer;
+	long crc;
+
+	buffer = new char[size];
+
+	st.flush();
+	st.seekg(0);
+
+	st.read( buffer, size );
+
+	CreateChecksum( buffer, size, &crc );
+
+	st.write( (char *)&crc, 4 );
+
+	delete [] buffer;
 
 }
 

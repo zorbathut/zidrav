@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /vd1 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /FR /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /FR /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -94,13 +94,18 @@ LINK32=link.exe
 # Begin Source File
 
 SOURCE=.\core.cpp
+# End Source File
+# Begin Source File
 
-!IF  "$(CFG)" == "Zidrav - Win32 Release"
+SOURCE=.\flayer.cpp
+# End Source File
+# Begin Source File
 
-!ELSEIF  "$(CFG)" == "Zidrav - Win32 Debug"
+SOURCE=.\gui.cpp
+# End Source File
+# Begin Source File
 
-!ENDIF 
-
+SOURCE=.\guiface.cpp
 # End Source File
 # Begin Source File
 
@@ -109,6 +114,14 @@ SOURCE=.\iface.cpp
 # Begin Source File
 
 SOURCE=.\main.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\mcbatch.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\mcbatchkimp.cpp
 # End Source File
 # Begin Source File
 
@@ -124,7 +137,27 @@ SOURCE=.\core.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\flayer.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ghinst.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gui.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\guiface.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\iface.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\mcbatch.h
 # End Source File
 # Begin Source File
 
@@ -140,8 +173,16 @@ SOURCE=.\icon1.ico
 # End Source File
 # Begin Source File
 
+SOURCE=.\resource.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\zidrav.rc
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=.\notes.txt
+# End Source File
 # End Target
 # End Project

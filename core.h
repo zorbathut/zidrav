@@ -2,13 +2,32 @@
 #define _ZIDRAV_CORE
 
 #include <windows.h>
+#include <fstream.h>
 
-#define ZC				"ZoRBCRCC"
-#define ZP				"ZoRBCRCP"
-#define ZQ				"ZoRBCRCQ"
-#define CVER			"\x02\x00"
-#define PVER			"\x02\x00"
-#define QVER			"\x02\x00"
+#include "iface.h"
+
+class KSigver {
+public:
+	char	signature[9];
+	char	version[3];
+
+	KSigver( char sig[], char ver[] ) {
+		strcpy( signature, sig );
+		strcpy( version, ver );
+	};
+};
+
+#define ZC		"ZoRBCRCC"
+#define ZP		"ZoRBCRCP"
+#define ZQ		"ZoRBCRCQ"
+#define CVER	"\x02\x00"
+#define PVER	"\x02\x00"
+#define QVER	"\x02\x00"
+
+#define CSV		KSigver( ZC, CVER )
+#define PSV		KSigver( ZP, PVER )
+#define QSV		KSigver( ZQ, QVER )
+
 
 const long crc_table[256] = {		// it's just easier this way, alright? It's one K of data, I'm allowed a global if I want one
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
@@ -65,23 +84,16 @@ const long crc_table[256] = {		// it's just easier this way, alright? It's one K
   0x2d02ef8dL
 };
 
-DWORD WINAPI MakeChecksumGO( LPVOID lpParameter );			// Black has built a silly dice maze . . .
-DWORD WINAPI MakePatchGO( LPVOID lpParameter );
-DWORD WINAPI MakeRequestGO( LPVOID lpParameter );
-DWORD WINAPI FillRequestGO( LPVOID lpParameter );
-DWORD WINAPI ApplyPatchGO( LPVOID lpParameter );
 
-void MakeChecksumLUL( HWND hwnd, BOOL lock );				// Lock/UnLock
-void MakePatchLUL( HWND hwnd, BOOL lock );
-void MakeRequestLUL( HWND hwnd, BOOL lock );
-void FillRequestLUL( HWND hwnd, BOOL lock );
-void ApplyPatchLUL( HWND hwnd, BOOL lock );
+void MakeChecksumCore( istream &input, iostream &output, int blocksize, int datalen, KStatIface iface );
+void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, int vstrlen, int * efound, KStatIface iface );
+void MakeRequestCore( istream &cdti, istream &dstr, iostream &output, int cdtlen, int dstrlen, int * efound, KStatIface iface );
+void FillRequestCore( istream &cdqi, istream &vstr, iostream &output, int cdqlen, int vstrlen, int * efound, KStatIface iface );
+void ApplyPatchCore( istream &cdpi, iostream &pstr, int cdplen, int pstrlen, KStatIface iface );
 
-void MakeChecksumPBT( HWND hwnd, BOOL pbvis );				// Progress Bar Toggle
-void MakePatchPBT( HWND hwnd, BOOL pbvis );
-void MakeRequestPBT( HWND hwnd, BOOL pbvis );
-// no progess bar for ApplyPatch or FillRequest :)
+int VerifyStream( istream &input, int datalen, int emsg, KSigver sigver, KStatIface iface );
 
+void MakeOverallChecksum( iostream &st, long size );
 void CreateChecksum( char *buffer, long size, long *crc );
 
 #endif

@@ -1,0 +1,43 @@
+IsWindowVisible() - for checking if the window still exists
+
+Core prog geometry:
+
+core driver
+	core prog
+		input verifier/opener
+		output checksum adder
+
+Needed data for the core driver:
+
+any relevant filename/blocksize fields
+will lock/unlock on its own
+
+Needed data for the core prog:
+
+filenames, progress bar sub (if there is one), progress bar update sub, status bar update sub, NOT just hwnds!
+
+Needed data for input verifier/opener
+
+filenames, streams as reference, output filesize and blocksize (if relevant)
+
+Needed data for output checksum adder
+
+stream
+filesize
+
+
+
+Many different layers - main GUI, GUI interface, file interface, data interface
+
+
+Traverse logic - 
+
+if there's a link to the left, take it
+	return the called function
+  else
+	if there's a link to the right, 
+	  else
+		go up a level
+	
+
+SetWindowRgn

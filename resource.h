@@ -2,6 +2,28 @@
 // Microsoft Developer Studio generated include file.
 // Used by Zidrav.rc
 //
+#define IDS_UPT_READY                   1
+#define IDS_UPT_PROCESS                 2
+#define IDS_UPT_SCAN                    3
+#define IDS_UPT_COMPLETE                4
+#define IDS_UPT_CNOCORR                 5
+#define IDS_UPT_CCDQGEN                 6
+#define IDS_UPT_CCDPGEN                 7
+#define IDS_UPT_COMPATCH                8
+#define IDS_UPT_ERROCDT                 9
+#define IDS_UPT_ERROCDP                 10
+#define IDS_UPT_ERROCDQ                 11
+#define IDS_UPT_ERROINP                 12
+#define IDS_UPT_ERROOUT                 13
+#define IDS_UPT_ERROVFILE               14
+#define IDS_UPT_ERRODFILE               15
+#define IDS_UPT_ERROPFILE               16
+#define IDS_UPT_INVCDT                  17
+#define IDS_UPT_INVCDP                  18
+#define IDS_UPT_INVCDQ                  19
+#define IDS_UPT_CVERCHECK               20
+#define IDS_UPT_DUPENAMES               21
+#define IDS_UPT_CLEAR                   22
 #define IDD_DIALOG1                     101
 #define MAIN_DIALOG                     101
 #define IDI_ICON1                       103
@@ -11,6 +33,7 @@
 #define APATCH_DIALOG                   106
 #define MREQ_DIALOG                     107
 #define FREQ_DIALOG                     108
+#define MBCHECK_DIALOG                  109
 #define IDC_BUTTON2                     1008
 #define MAKE_CHECKSUM                   1008
 #define CCHECK_INPUT_BUTTON             1008
@@ -27,6 +50,7 @@
 #define MPATCH_OUTPUT_BUTTON            1011
 #define IDC_BUTTON6                     1012
 #define APPLY_PATCH                     1012
+#define MAKE_BATCHCHECKSUM              1014
 #define CCHECK_OUTPUT_FILE              1017
 #define MCHECK_OUTPUT_FIELD             1017
 #define MPATCH_OUTPUT_FIELD             1018
@@ -38,6 +62,7 @@
 #define MCHECK_BLOCKSIZE_FIELD          1021
 #define CCHECK_PROGRESS_BAR             1022
 #define MCHECK_PROGRESS_BAR             1022
+#define MBCHECK_LOWER_PBAR              1024
 #define MPATCH_CDT_BUTTON               1028
 #define MPATCH_CDT_FIELD                1029
 #define MPATCH_VFILE_FIELD              1030
@@ -63,6 +88,7 @@
 #define MCHECK_STATUS                   1049
 #define FREQ_OUTPUT_BUTTON              1050
 #define MPATCH_STATUS                   1050
+#define MBCHECK_UPPER_STATUS            1050
 #define MREQ_STATUS                     1051
 #define MPATCH_MINISTATUS               1051
 #define APATCH_GO                       1052
@@ -71,14 +97,24 @@
 #define MREQ_GO                         1054
 #define FREQ_STATUS                     1055
 #define FREQ_GO                         1056
+#define MBCHECK_UPPER_PBAR              1057
+#define MBCHECK_LOWER_STATUS            1058
+#define MBCHECK_PRESERVE                1060
+#define MBCHECK_INPUT_FIELD             1061
+#define MBCHECK_OUTPUT_FIELD            1062
+#define MBCHECK_BLOCKSIZE_SLIDER        1063
+#define MBCHECK_INPUT_BUTTON            1064
+#define MBCHECK_OUTPUT_BUTTON           1065
+#define MBCHECK_BLOCKSIZE_FIELD         1066
+#define MBCHECK_GO                      1067
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        107
+#define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1057
+#define _APS_NEXT_CONTROL_VALUE         1068
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
