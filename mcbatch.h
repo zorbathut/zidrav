@@ -16,6 +16,9 @@ class KFTStackUnit;
 
 class KFileData;
 
+class KHMaskChain;
+class KMaskChain;
+
 typedef std::stack< KDTStackUnit > KDTStack;
 typedef std::stack< KFTStackUnit > KFTStack;
 
@@ -91,6 +94,29 @@ public:
 	BOOL				newdir;
 };
 
+class KHMaskChain {
+public:
+	KMaskChain	*down;
+
+	KHMaskChain( void );
+	~KHMaskChain( void );
+
+	int render( char *fullmask );
+	int permit( char *fname );
+};
+
+class KMaskChain {
+public:
+	KMaskChain	*down;
+	char		*mask;
+
+	KMaskChain( void );
+	~KMaskChain( void );
+
+	int render( char *curmask );
+	int permit( char *fname );
+};
+
 enum { ISHEAD, ISLEFT, ISRIGHT };
 enum { DOINGREADY, DOINGLEFT, DOINGTHIS, DOINGRIGHT, DOINGBACK };
 
@@ -100,6 +126,8 @@ void		 MakeBatchChecksumMakerIface( int type, int param, void * data, void * eda
 void		 MakeBatchChecksumLUL( HWND hwnd, BOOL lock );
 void		 MakeBatchChecksumPBT( HWND hwnd, BOOL pbvis );
 
-int RCPrepare( char startdir[], char destdir[], int flatten, KDirHeader &start, int &count, long &totalsize, KStatIface iface );
+int RCPrepare( char startdir[], char destdir[], int flatten, KDirHeader &start, int &count, long &totalsize, KHMaskChain &mchain, KStatIface iface );
+
+int StarMatch(char *dat, char *pat, char *res[]);
 
 #endif

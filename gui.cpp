@@ -134,7 +134,7 @@ int CALLBACK MakeBatchChecksumGUI(HWND hwnd, UINT Message, WPARAM wParam, LPARAM
 		ActivateGenericDD( GetDlgItem( hwnd, MBCHECK_INPUT_FIELD ) );
 		ActivateGenericDD( GetDlgItem( hwnd, MBCHECK_OUTPUT_FIELD ) );
 		SetDlgItemInt( hwnd, MBCHECK_BLOCKSIZE_FIELD, 16384, FALSE );
-		SendDlgItemMessage(hwnd, MBCHECK_BLOCKSIZE_SLIDER, TBM_SETRANGE, FALSE, MAKELONG(12, 18) );
+		SendDlgItemMessage(hwnd, MBCHECK_BLOCKSIZE_SLIDER, TBM_SETRANGE, FALSE, MAKELONG(12, 16) );
 		SendDlgItemMessage(hwnd, MBCHECK_BLOCKSIZE_SLIDER, TBM_SETPOS, TRUE, 14 );
 		return TRUE;
 

@@ -24,6 +24,7 @@
 #define IDS_UPT_CVERCHECK               20
 #define IDS_UPT_DUPENAMES               21
 #define IDS_UPT_CLEAR                   22
+#define IDS_UPT_INVMASK                 23
 #define IDD_DIALOG1                     101
 #define MAIN_DIALOG                     101
 #define IDI_ICON1                       103
@@ -107,6 +108,7 @@
 #define MBCHECK_OUTPUT_BUTTON           1065
 #define MBCHECK_BLOCKSIZE_FIELD         1066
 #define MBCHECK_GO                      1067
+#define MBCHECK_MASK                    1068
 
 // Next default values for new objects
 // 
@@ -114,7 +116,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1068
+#define _APS_NEXT_CONTROL_VALUE         1069
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

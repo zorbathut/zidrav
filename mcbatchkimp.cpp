@@ -245,3 +245,92 @@ KFileTree::KFileTree( void ) {
 KFileTree::~KFileTree( void ) {
 	delete left;
 	delete right;		}
+
+/*class KHMaskChain {
+public:
+	KMaskChain	*down;
+
+	KHMaskChain( void );
+	~KHMaskChain( void );
+
+	int render( char *fullmask );
+	int permit( char *fname );
+}*/
+
+KHMaskChain::KHMaskChain( void ) {
+	down = NULL; }
+
+KHMaskChain::~KHMaskChain( void ) {
+	delete down; }
+
+int KHMaskChain::render( char *fullmask ) {
+	if( strlen(fullmask) > 0 ) {
+		down = new KMaskChain;
+		return down->render( fullmask );
+	} else
+		return 0;
+}
+
+int KHMaskChain::permit( char *fname ) {
+	if( down )
+		return down->permit( fname );
+	  else
+		return 1;
+}
+
+
+/*class KMaskChain {
+public:
+	KMaskChain	*down;
+	char		*mask;
+
+	KMaskChain( void );
+	~KMaskChain( void );
+
+	int render( char *curmask );
+	int permit( char *fname );
+}*/
+
+KMaskChain::KMaskChain( void ) {
+	down = NULL;
+	mask = NULL; }
+
+KMaskChain::~KMaskChain( void ) {
+	delete down;
+	delete [] mask; }
+
+int KMaskChain::render( char *curmask ) {
+	
+	char tempmask[MAX_PATH];
+	char *mpoint;
+	
+	mpoint = strchr( curmask, ';' );
+
+	if( mpoint == NULL )
+		mpoint = curmask + strlen( curmask );
+
+	strncpy( tempmask, curmask, mpoint - curmask );
+	tempmask[ mpoint - curmask ] = '\0';
+
+	if( strlen(tempmask) == 0 )
+		return 1;
+	
+	mask = new char[ strlen(tempmask) + 1 ];
+	strcpy( mask, tempmask );
+
+	if( strlen(mpoint) > 0 ) {
+		down = new KMaskChain;
+		return down->render( mpoint + 1 );
+	} else
+		return 0;
+}
+
+int KMaskChain::permit( char *fname ) {
+	if( StarMatch( fname, mask, NULL ) )
+		return 0;
+	  else
+		if( down )
+			return down->permit( fname );
+		  else
+			return 1;
+}
