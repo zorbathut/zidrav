@@ -47,7 +47,7 @@ void MakeChecksumCore( istream &input, iostream &output, int blocksize, int data
 
 		input.read( buffer, blocksize );
 
-		if( i == datalen / blocksize - 1 )	// If it's the end of the file, only make the checksum for what's left
+		if( (i == datalen / blocksize - 1) && (datalen % blocksize) )	// If it's the end of the file, only make the checksum for what's left
 			CreateChecksum( buffer, datalen % blocksize, &crc );
 		  else
 			CreateChecksum( buffer, blocksize, &crc );
@@ -61,8 +61,10 @@ void MakeChecksumCore( istream &input, iostream &output, int blocksize, int data
 	iface( UPD_BIGSTAT, IDS_UPT_CVERCHECK, NULL );
 	iface( UPD_PBHIDE, NULL, NULL );
 
-	MakeOverallChecksum( output, 18 + ( datalen / blocksize + 1 ) * 4 );
-
+    if (datalen % blocksize)
+        MakeOverallChecksum( output, 18 + ( datalen / blocksize + 1 ) * 4 );
+    else
+        MakeOverallChecksum( output, 18 + ( datalen / blocksize ) * 4 ); 
 }
 
 void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, int vstrlen, int * efound, KStatIface iface ) {
@@ -126,13 +128,10 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 		if( i >= 0 && !( i % 32 ) )
 			iface( UPD_PBSET, i * blocksize, NULL );
 
-		if( i == vstrlen / blocksize - 1 )
+		if( i == vstrlen / blocksize - 1 && (vstrlen % blocksize) )
 			curbs = vstrlen % blocksize;
 		  else
 			curbs = blocksize;
-
-		if( curbs == 0 )
-			curbs = blocksize;		// it's possible - if the file is a multiple of blocksize
 
 		vstr.read( buffer, curbs );
 		cdti.read( (char *)&cdtcrc, 4 );
@@ -144,8 +143,11 @@ void MakePatchCore( istream &cdti, istream &vstr, iostream &output, int cdtlen, 
 			AlterStr alter;
 
 			alter.type = UPG_CORR;
-			alter.varalpha = (void *)(temp = i * blocksize + blocksize);
-
+            if (vstrlen % blocksize)             
+    			alter.varalpha = (void *)(temp = i * blocksize + blocksize);
+            else
+    			alter.varalpha = (void *)(temp = i * blocksize);
+            
 			iface( UPD_MINISTAT, NULL, &alter );
 
 			output.write( (char *)&temp, 4 );	// write the current offset
